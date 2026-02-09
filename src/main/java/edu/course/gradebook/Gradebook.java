@@ -13,23 +13,26 @@ public class Gradebook {
     }
 
     public boolean addStudent(String name) {
-        return gradesByStudent.put(name, new ArrayList<Integer>()) != null;
+        return gradesByStudent.put(name, new ArrayList<Integer>()) == null;
     }
 
     public boolean addGrade(String name, int grade) {
         List<Integer> list = gradesByStudent.get(name);
-        list.add(grade);
-        return gradesByStudent.put(name, list) != null;
+        if (list == null) {
+            return false;
+        }
+        return list.add(grade);
     }
 
     public boolean removeStudent(String name) {
-        return gradesByStudent.remove(name)!= null;
+        return gradesByStudent.remove(name) != null;
     }
 
     public Optional<Double> averageFor(String name) {
-        if (!gradesByStudent.containsKey(name)) return Optional.empty();
+        if (!gradesByStudent.containsKey(name))
+            return Optional.empty();
         int sum = 0;
-        for(int grade : gradesByStudent.get(name)) {
+        for (int grade : gradesByStudent.get(name)) {
             sum += grade;
         }
         double average = sum / (double) gradesByStudent.get(name).size();
@@ -37,29 +40,46 @@ public class Gradebook {
     }
 
     public Optional<String> letterGradeFor(String name) {
-        List<Integer> grade =gradesByStudent.get(name);
-        Optional<Double> avg = averageFor(grade.toString());
+        List<Integer> grade = gradesByStudent.get(name);
+        if (grade == null || grade.isEmpty())
+            return Optional.empty();
+        Optional<Double> avg = averageFor(name);
         int avgInt = avg.get().intValue();
-        return switch (avgInt) {
-            case 100, 90 -> Optional.of("A");
-            case 80, 89 -> Optional.of("B");
-            case 70, 79 -> Optional.of("C");
-            case 60, 69 -> Optional.of("D");
-            default -> Optional.of("F");
+        return switch (avgInt >= 90 ? 'A' : avgInt >= 80 ? 'B' : avgInt >= 70 ? 'C' : avgInt >= 60 ? 'D' : 'F') {
+            case 'A' -> {
+                yield Optional.of("A");
+            }
+            case 'B' -> {
+                yield Optional.of("B");
+            }
+            case 'C' -> {
+                yield Optional.of("C");
+            }
+            case 'D' -> {
+                yield Optional.of("D");
+            }
+            default -> {
+                yield Optional.of("F");
+            }
         };
     }
 
     public Optional<Double> classAverage() {
         int sum = 0;
-        for (int i = 0; i < gradesByStudent.size(); i++){
-            sum += gradesByStudent.get(i).get(i);
+        int count = 0;
+        for (List<Integer> grades : gradesByStudent.values()) {
+            for (int grade : grades) {
+                sum += grade;
+                count++;
+            }
         }
-        double average = sum / (double) gradesByStudent.size();
-        return Optional.of(average);
+        return count == 0 ? Optional.empty() : Optional.of(sum / (double) count);
     }
 
     public boolean undo() {
-        return undoStack.pop() != null;
+        boolean bl = !undoStack.isEmpty() && undoStack.pop()  != null;
+        activityLog.removeLast();
+        return bl;
     }
 
     public List<String> recentLog(int maxItems) {
