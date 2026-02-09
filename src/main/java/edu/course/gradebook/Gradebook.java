@@ -13,7 +13,11 @@ public class Gradebook {
     }
 
     public boolean addStudent(String name) {
-        return gradesByStudent.put(name, new ArrayList<Integer>()) == null;
+        boolean result = gradesByStudent.put(name, new ArrayList<Integer>()) == null;
+        if (result) {
+            activityLog.add("Added student: " + name);
+        }
+        return result;
     }
 
     public boolean addGrade(String name, int grade) {
@@ -21,28 +25,50 @@ public class Gradebook {
         if (list == null) {
             return false;
         }
-        return list.add(grade);
+        boolean result = list.add(grade);
+        if (result) {
+            activityLog.add("Added grade " + grade + " for student: " + name);
+            undoStack.push(gradebook -> {
+                List<Integer> grades = gradebook.gradesByStudent.get(name);
+                if (grades != null && !grades.isEmpty()) {
+                    grades.remove(grades.size() - 1);
+                }
+            });
+        }
+        return result;
     }
 
     public boolean removeStudent(String name) {
-        return gradesByStudent.remove(name) != null;
+        List<Integer> removedGrades = gradesByStudent.get(name);
+        boolean result = gradesByStudent.remove(name) != null;
+        if (result) {
+            activityLog.add("Removed student: " + name);
+            final List<Integer> gradesToRestore = new ArrayList<>(removedGrades);
+            undoStack.push(gradebook -> {
+                gradebook.gradesByStudent.put(name, gradesToRestore);
+            });
+        }
+        return result;
     }
 
     public Optional<Double> averageFor(String name) {
-        if (!gradesByStudent.containsKey(name))
+        List<Integer> grades = gradesByStudent.get(name);
+        if (grades == null || grades.isEmpty()) {
             return Optional.empty();
+        }
         int sum = 0;
-        for (int grade : gradesByStudent.get(name)) {
+        for (int grade : grades) {
             sum += grade;
         }
-        double average = sum / (double) gradesByStudent.get(name).size();
+        double average = sum / (double) grades.size();
         return Optional.of(average);
     }
 
     public Optional<String> letterGradeFor(String name) {
-        List<Integer> grade = gradesByStudent.get(name);
-        if (grade == null || grade.isEmpty())
+        List<Integer> grades = gradesByStudent.get(name);
+        if (grades == null || grades.isEmpty()) {
             return Optional.empty();
+        }
         Optional<Double> avg = averageFor(name);
         int avgInt = avg.get().intValue();
         return switch (avgInt >= 90 ? 'A' : avgInt >= 80 ? 'B' : avgInt >= 70 ? 'C' : avgInt >= 60 ? 'D' : 'F') {
@@ -77,9 +103,16 @@ public class Gradebook {
     }
 
     public boolean undo() {
-        boolean bl = !undoStack.isEmpty() && undoStack.pop()  != null;
-        activityLog.removeLast();
-        return bl;
+        if (undoStack.isEmpty()) {
+            return false;
+        }
+        
+        UndoAction action = undoStack.pop();
+        action.undo(this);
+        
+        activityLog.add("Undo operation performed");
+        
+        return true;
     }
 
     public List<String> recentLog(int maxItems) {
