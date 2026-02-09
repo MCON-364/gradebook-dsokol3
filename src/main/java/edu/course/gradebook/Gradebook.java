@@ -13,34 +13,56 @@ public class Gradebook {
     }
 
     public boolean addStudent(String name) {
-        throw new UnsupportedOperationException();
+        return gradesByStudent.put(name, new ArrayList<Integer>()) != null;
     }
 
     public boolean addGrade(String name, int grade) {
-        throw new UnsupportedOperationException();
+        List<Integer> list = gradesByStudent.get(name);
+        list.add(grade);
+        return gradesByStudent.put(name, list) != null;
     }
 
     public boolean removeStudent(String name) {
-        throw new UnsupportedOperationException();
+        return gradesByStudent.remove(name)!= null;
     }
 
     public Optional<Double> averageFor(String name) {
-        throw new UnsupportedOperationException();
+        if (!gradesByStudent.containsKey(name)) return Optional.empty();
+        int sum = 0;
+        for(int grade : gradesByStudent.get(name)) {
+            sum += grade;
+        }
+        double average = sum / (double) gradesByStudent.get(name).size();
+        return Optional.of(average);
     }
 
     public Optional<String> letterGradeFor(String name) {
-        throw new UnsupportedOperationException();
+        List<Integer> grade =gradesByStudent.get(name);
+        Optional<Double> avg = averageFor(grade.toString());
+        int avgInt = avg.get().intValue();
+        return switch (avgInt) {
+            case 100, 90 -> Optional.of("A");
+            case 80, 89 -> Optional.of("B");
+            case 70, 79 -> Optional.of("C");
+            case 60, 69 -> Optional.of("D");
+            default -> Optional.of("F");
+        };
     }
 
     public Optional<Double> classAverage() {
-        throw new UnsupportedOperationException();
+        int sum = 0;
+        for (int i = 0; i < gradesByStudent.size(); i++){
+            sum += gradesByStudent.get(i).get(i);
+        }
+        double average = sum / (double) gradesByStudent.size();
+        return Optional.of(average);
     }
 
     public boolean undo() {
-        throw new UnsupportedOperationException();
+        return undoStack.pop() != null;
     }
 
     public List<String> recentLog(int maxItems) {
-        throw new UnsupportedOperationException();
+        return activityLog.subList(Math.max(activityLog.size() - maxItems, 0), activityLog.size());
     }
 }
